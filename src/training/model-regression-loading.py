@@ -8,8 +8,8 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 from generator import SineConfig, generate
 
-MODEL_PATH = Path("artifacts/sine_model_v1.joblib")
-PLOT_PATH = Path("artifacts/predictions.png")
+MODEL_PATH = Path("../artifacts/sine_model_v1.joblib")
+PLOT_PATH = Path("../artifacts/predictions.png")
 
 # Załaduj model
 model = joblib.load(MODEL_PATH)

@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: monitoring-system/Dockerfile
+    container_name: ml-monitor-api
+    ports:
+      - "8000:8000"
+    environment:
+      - MODEL_PATH=/app/artifacts/sine_model_v1.joblib
+      - MODEL_METADATA_PATH=/app/artifacts/sine_model_v1_metadata.json

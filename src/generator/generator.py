@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -9,12 +9,29 @@ import matplotlib.pyplot as plt
 @dataclass z frozen=True jako odpowiednik record z Java.
 obiekt immutable idealny do przenoszenia konfiguracji 
 """
+
+@dataclass(frozen=True)
+class Uniform:
+    pass  # korzysta z x_min, x_max z SineConfig
+
+@dataclass(frozen=True)
+class Normal:
+    mean: float
+    std: float
+
+@dataclass(frozen=True)
+class Linspace:
+    pass  # deterministyczny, równomierny rozkład
+
+Distribution = Uniform | Normal | Linspace
+
 @dataclass(frozen=True)
 class SineConfig:
     A: float
     B: float
     x_min: float
     x_max: float
+    distribution: Distribution = field(default_factory=Uniform)
     noise_std: float = 0.0
     n_samples: int = 1000
     random_seed: int | None = None
@@ -37,15 +54,15 @@ def generate(config: SineConfig, visualisation_path: str) -> tuple[np.ndarray, n
         y: Target values, shape (n_samples,).
     """
     rng = np.random.default_rng(config.random_seed)
-    x = rng.uniform(config.x_min, config.x_max, config.n_samples)
-    mid = (config.x_min + config.x_max) / 2
-    n_first = int(config.n_samples * 2 / 3)   # 2/3 próbek w pierwszej połowie
-    n_second = config.n_samples - n_first      # 1/3 w drugiej
 
-    x_first = rng.uniform(config.x_min, mid, n_first)
-    x_second = rng.uniform(mid, config.x_max, n_second)
-    x = np.concatenate([x_first, x_second])
-    rng.shuffle(x)
+    match config.distribution:
+        case Uniform():
+            x = rng.uniform(config.x_min, config.x_max, config.n_samples)
+        case Normal(mean=m, std=s):
+            x = rng.normal(m, s, config.n_samples)
+            x = np.clip(x, config.x_min, config.x_max)
+        case Linspace():
+            x = np.linspace(config.x_min, config.x_max, config.n_samples)
 
     if config.noise_std > 0:
         noise = rng.normal(0.0, config.noise_std, config.n_samples)

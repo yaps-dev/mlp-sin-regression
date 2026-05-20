@@ -6,33 +6,89 @@ import joblib
 import matplotlib.pyplot as plt
 import numpy as np
 import sklearn
+import os
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 from sklearn.neural_network import MLPRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+from sqlalchemy import create_engine, Column, Integer, Float, String, DateTime, inspect
+from sqlalchemy.orm import declarative_base, sessionmaker
 
-from generator import SineConfig, generate
+from generator.generator import SineConfig, generate
+
+Base = declarative_base()
+
+class TrainingDataset(Base):
+    __tablename__ = 'training_dataset'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    x = Column(Float, nullable=False)
+    y_train = Column(Float, nullable=False)
+
+    def __repr__(self):
+        return f"<TrainingDataset(x={self.x:.3f}, t_train={self.t_train:.3f})>"
 
 # === Konfiguracja ===
 MODEL_VERSION = "v1"
-ARTIFACTS_DIR = Path("artifacts")
-PLOTS_DIR = Path("training_plots")
+ARTIFACTS_DIR = Path("../../artifacts")
+PLOTS_DIR = Path("../../artifacts/training_plots/")
 ARTIFACTS_DIR.mkdir(exist_ok=True, parents=True)
 PLOTS_DIR.mkdir(exist_ok=True, parents=True)
+
+db_user = os.getenv("DB_USER", "username")
+db_user_password = os.getenv("DB_PASSWORD", "password")
+db_addr = os.getenv("DB_ADDR", "localhost")
+db_port = os.getenv("DB_PORT", "5432")
+db_schema = os.getenv("DB_SCHEMA", "ml_data")
+
+engine = create_engine(
+    f'postgresql://{db_user}:{db_user_password}@{db_addr}:{db_port}/{db_schema}',
+    echo=False
+)
+Base.metadata.create_all(engine)
+Session = sessionmaker(bind=engine)
 
 # === Dane treningowe ===
 config = SineConfig(
     A=2.0, B=2.0,
     x_min=0.0, x_max=4 * np.pi,
-    noise_std=0.1, n_samples=500, random_seed=42,
+    noise_std=0.1,
+    n_samples=5000,
+    random_seed=42,
 )
 
-X, y = generate(config, str(PLOTS_DIR) + "/")
+X, y = generate(config, str(PLOTS_DIR))
 
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42,
 )
+
+# Wyczyść starą tabelę przed nowym treningiem
+session = Session()
+
+inspector = inspect(engine)
+table_exists = 'training_dataset' in inspector.get_table_names()
+if(table_exists):
+    print("Czyszczę starą tabelę training_dataset")
+    session.query(TrainingDataset).delete()
+    session.commit()
+
+print(f"Zapisuję {len(X_train)} próbek treningowych do bazy")
+
+# Bulk insert
+X_train_list = X_train.flatten().tolist()
+y_train_list = y_train.tolist()
+
+training_records = [
+    {"x": x_val, "y_train": y_val}
+    for x_val, y_val in zip(X_train_list, y_train_list)
+]
+
+session.bulk_insert_mappings(TrainingDataset, training_records)
+session.commit()
+
+session.close()
 
 # === Trening ===
 model = Pipeline([
@@ -43,7 +99,7 @@ model = Pipeline([
         learning_rate_init=0.01,
         solver="adam",
         max_iter=2000,
-        tol=1e-6,
+        tol=0.0001, #Tolerance for the optimization.
         random_state=42,
         verbose=True,
     )),
@@ -111,6 +167,7 @@ metadata = {
         "x_max": config.x_max,
         "noise_std": config.noise_std,
         "n_samples": config.n_samples,
+        "distribution": config.distribution.__class__.__name__,
         "random_seed": config.random_seed,
     },
     "model_architecture": {
