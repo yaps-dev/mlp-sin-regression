@@ -11,3 +11,4 @@ services:
     environment:
       - MODEL_PATH=/app/artifacts/sine_model_v1.joblib
       - MODEL_METADATA_PATH=/app/artifacts/sine_model_v1_metadata.json
+      - DB_ADDR=database_postgres

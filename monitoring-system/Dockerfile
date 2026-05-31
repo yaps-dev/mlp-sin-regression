@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
@@ -10,7 +10,7 @@ COPY src ./src
 RUN echo "=== After copying src ===" && ls -la && ls -la src/
 
 # Teraz dopiero zainstaluj
-RUN pip install --no-cache-dir -e .
+RUN pip install --no-cache-dir -e ".[drift]"
 RUN echo "=== After pip install ===" && pip list
 
 # Skopiuj model

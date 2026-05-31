@@ -25,9 +25,10 @@ class TrainingDataset(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     x = Column(Float, nullable=False)
     y_train = Column(Float, nullable=False)
+    y_prediction = Column(Float, nullable=False)
 
     def __repr__(self):
-        return f"<TrainingDataset(x={self.x:.3f}, t_train={self.t_train:.3f})>"
+        return f"<TrainingDataset(x={self.x:.3f}, y_train={self.y_train:.3f}, t_prediction={self.y_prediction:.3f})>"
 
 # === Konfiguracja ===
 MODEL_VERSION = "v1"
@@ -64,32 +65,6 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42,
 )
 
-# Wyczyść starą tabelę przed nowym treningiem
-session = Session()
-
-inspector = inspect(engine)
-table_exists = 'training_dataset' in inspector.get_table_names()
-if(table_exists):
-    print("Czyszczę starą tabelę training_dataset")
-    session.query(TrainingDataset).delete()
-    session.commit()
-
-print(f"Zapisuję {len(X_train)} próbek treningowych do bazy")
-
-# Bulk insert
-X_train_list = X_train.flatten().tolist()
-y_train_list = y_train.tolist()
-
-training_records = [
-    {"x": x_val, "y_train": y_val}
-    for x_val, y_val in zip(X_train_list, y_train_list)
-]
-
-session.bulk_insert_mappings(TrainingDataset, training_records)
-session.commit()
-
-session.close()
-
 # === Trening ===
 model = Pipeline([
     ('scaler', StandardScaler()),
@@ -118,6 +93,31 @@ metrics = {
     "test_mae": float(mean_absolute_error(y_test, y_pred_test)),
     "test_r2": float(r2_score(y_test, y_pred_test)),
 }
+
+# Wyczyść starą tabelę przed nowym treningiem
+session = Session()
+inspector = inspect(engine)
+table_exists = 'training_dataset' in inspector.get_table_names()
+if(table_exists):
+    print("Czyszczę starą tabelę training_dataset")
+    session.query(TrainingDataset).delete()
+    session.commit()
+
+print(f"Zapisuję {len(X_train)} próbek treningowych do bazy")
+
+# Bulk insert
+X_train_list = X_train.flatten().tolist()
+y_train_list = y_train.tolist()
+y_train_prediction_list = y_pred_train.tolist()
+training_records = [
+    {"x": x_val, "y_train": y_val, "y_prediction": y_prediction_val}
+    for x_val, y_val, y_prediction_val in zip(X_train_list, y_train_list, y_train_prediction_list)
+]
+
+session.bulk_insert_mappings(TrainingDataset, training_records)
+session.commit()
+
+session.close()
 
 # Dostęp do atrybutów regresora przez named_steps
 regressor = model.named_steps['regressor']

@@ -135,15 +135,15 @@ async def main():
         A=2.0,
         B=2.0,
         x_min=0.0,
-        x_max=10.0,
-        #distribution=Uniform(),
-        distribution=Normal(mean=5.0, std=1.5),
+        x_max=12.566370614359172,
+        distribution=Uniform(),
+        #distribution=Normal(mean=5.0, std=1.5),
         noise_std=0.1,
-        n_samples=1000,
-        random_seed=42
+        n_samples=100000,
+        random_seed=1
     )
 
-    await generator.run_batch(baseline_config, requests_per_second=10.0)
+    await generator.run_batch(baseline_config, requests_per_second=10.85)
 
 if __name__ == "__main__":
     asyncio.run(main())

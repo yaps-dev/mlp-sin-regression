@@ -9,6 +9,10 @@ import numpy as np
 from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel, Field
 from prometheus_fastapi_instrumentator import Instrumentator
+import asyncio
+from src.serving import drift_monitor
+from src.serving.drift_monitor import drift_monitor_loop, load_reference
+from src.serving import metrics  # noqa: F401
 
 # Konfiguracja
 logging.basicConfig(
@@ -65,7 +69,19 @@ async def lifespan(app: FastAPI):
     state.model = joblib.load(MODEL_PATH)
     state.metadata = json.loads(MODEL_METADATA_PATH.read_text())
 
-    yield  # <- aplikacja przyjmuje requesty
+    drift_monitor.REFERENCE_DATA = load_reference()
+
+    # włączenie zadania monitoringu
+    task = asyncio.create_task(drift_monitor_loop())
+
+    yield
+
+    # Gracefull shutdown
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
 
     # cleanup po SIGTERM
     logger.info("Zwalniam model")
@@ -94,7 +110,6 @@ def predict(req: PredictRequest):
             detail="Model niezaladowany",
         )
 
-    # sklearn wymaga 2D input: shape (n_samples, n_features) = (1, 1)
     X = np.array([[req.x]])
     y_pred = float(state.model.predict(X)[0])
 
@@ -113,7 +128,6 @@ def predict_batch(req: BatchPredictRequest):
             detail="Model niezaladowany",
         )
 
-    # reshape do (n, 1) - n probek po 1 cesze
     X = np.array(req.x).reshape(-1, 1)
     y_pred = state.model.predict(X)
 

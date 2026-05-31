@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 @dataclass z frozen=True jako odpowiednik record z Java.
 obiekt immutable idealny do przenoszenia konfiguracji 
 """
-
 @dataclass(frozen=True)
 class Uniform:
     pass  # korzysta z x_min, x_max z SineConfig

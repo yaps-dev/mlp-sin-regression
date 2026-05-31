@@ -1,1 +1,1 @@
-fastapi dev app.py
+fastapi dev --port 8001 app.py
