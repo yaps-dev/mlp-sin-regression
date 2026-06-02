@@ -1,6 +1,6 @@
 # System Monitorowania Modelu ML - Środowisko Uruchomieniowe
 
-Informacja: Niniejszy plik README stanowi techniczne uzupełnienie analitycznej i teoretycznej części pracy, która została szczegółowo przedstawiona w odrębnym dokumencie PDF. Skupia się on wyłącznie na instrukcji wdrożenia i obsługi środowiska eksperymentalnego.
+Informacja: Niniejszy plik README stanowi techniczne uzupełnienie analitycznej i teoretycznej części pracy, która została szczegółowo przedstawiona w odrębnym [dokumencie PDF w tym repozytorium](https://github.com/yaps-dev/mlp-sin-regression/blob/main/Ewelina%20To%C5%82wi%C5%84ska%20-%20System%20Monitorowania%20Modelu%20ML.pdf). Skupia się on wyłącznie na instrukcji wdrożenia i obsługi środowiska eksperymentalnego.
 
 Niniejsze repozytorium zawiera konfigurację środowiska Docker Compose dla systemu monitorowania modelu uczenia maszynowego. Środowisko integruje aplikację serwującą model (FastAPI) z bazą danych (PostgreSQL) oraz pełnym stosem monitoringu (Prometheus, Grafana, cAdvisor).
 ## 📌 Wymagania wstępne
