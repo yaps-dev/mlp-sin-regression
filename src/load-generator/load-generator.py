@@ -120,17 +120,11 @@ class LoadGenerator:
         await self.client.aclose()
 
 
-# ===== MAIN =====
-
 async def main():
-    """
-    Scenariusz: symuluj drift przez zmianę rozkładu.
-
-    Phase 1: Training distribution (Uniform) - baseline
-    """
     generator = LoadGenerator(api_url="http://localhost:8000")
 
-    # Phase 1: Baseline (jak training data)
+    # Phase 1: Baseline (dane o rozkładzie i wartościach identyczne z danymi treningowymi)
+    # generator tworzy stałe obciążenie ~10 req/s
     baseline_config = SineConfig(
         A=2.0,
         B=2.0,

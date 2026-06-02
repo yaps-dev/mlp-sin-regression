@@ -1,0 +1,82 @@
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: monitoring-system/Dockerfile
+    container_name: ml-monitor-api
+    ports:
+      - "8000:8000"
+    environment:
+      - MODEL_PATH=/app/artifacts/sine_model_v1.joblib
+      - MODEL_METADATA_PATH=/app/artifacts/sine_model_v1_metadata.json
+      - DB_ADDR=database_postgres
+    depends_on:
+      - database_postgres
+
+  database_postgres:
+    image: postgres:16
+    container_name: database_postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: username
+      POSTGRES_DB: ml_data
+    volumes:
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+      - postgres_data:/var/lib/postgresql/data
+
+  pgadmin:
+    image: dpage/pgadmin4:8.4
+    ports:
+      - 5480:80
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@domain.com
+      PGADMIN_DEFAULT_PASSWORD: password
+    depends_on:
+      - database_postgres
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    ports:
+      - "8088:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    privileged: true
+    devices:
+      - /dev/kmsg
+
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - '9090:9090'
+    volumes:
+      - ./prometheus:/etc/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    restart: always
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    volumes:
+      - ./grafana/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+      - ./grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
+      - ./grafana/dashboards:/etc/grafana/provisioning-dash/dashboards
+    depends_on:
+      - prometheus
+      - database_postgres
+
+volumes:
+  postgres_data:
